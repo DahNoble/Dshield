@@ -22,7 +22,7 @@ Run `just --list` for the full set of available recipes (build, deploy, demo, cl
 
 ## Making changes
 
-1. Fork the repo and create a branch off `main`.
+1. Fork the repo and create a branch off `dev`.
 2. Make your change. Keep diffs focused — unrelated cleanup makes review harder.
 3. Add or update tests for any behavior change. This repo treats tests as load-bearing:
    - `just test-contracts` — Rust/Soroban contract tests
@@ -31,7 +31,7 @@ Run `just --list` for the full set of available recipes (build, deploy, demo, cl
    - `just test-e2e` (or `tests/e2e.sh`) — full on-chain deposit/withdraw loop against a local network
 4. If you touch a Noir circuit, make sure it still compiles and the corresponding proof round-trips: `nargo compile && nargo execute` in the circuit's directory, then regenerate the checked-in `frontend/src/circuits/*.json` / `frontend/public/circuits/*.json` artifacts the frontend embeds for client-side proving (see `just build-circuits`).
 5. Run the frontend linter (`pnpm lint` in `frontend/`) and make sure `pnpm build` type-checks cleanly.
-6. Open a PR against `main`. Describe *why* the change is needed, not just what changed — link the issue if there is one. CI (circuit compile/proof round-trip, contract tests, frontend tests, lint, and an on-chain e2e run) must pass before merge.
+6. Open a PR against `dev`, not `main` — all active development merges into `dev`. Describe *why* the change is needed, not just what changed — link the issue if there is one. CI (circuit compile/proof round-trip, contract tests, frontend tests, lint, and an on-chain e2e run) must pass before merge.
 
 ## Where things live
 

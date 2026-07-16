@@ -32,4 +32,6 @@ labels: bug
 - [ ]
 - [ ] A screenshot or short screen recording is attached to the PR showing the fix working — required before this can be merged.
 
+**Open your PR against the `dev` branch, not `main`.** All active development merges into `dev`.
+
 **Discuss this issue / coordinate work:** join the DShield contributor Telegram group: https://t.me/+SiGHH24No9U2MDJk
