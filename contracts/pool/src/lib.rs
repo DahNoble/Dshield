@@ -93,6 +93,10 @@ const ROOT_HISTORY_SIZE: u32 = 30;
 // inside the resource budget instead of reverting with an opaque host error.
 const MAX_BATCH_SIZE: u32 = 15;
 
+// Maximum number of commitments to return in a single page query to avoid
+// exceeding Soroban's per-transaction CPU/footprint limits.
+const MAX_PAGE_SIZE: u32 = 100;
+
 // Storage TTL management. Commitments, the commitment-by-index map, and
 // nullifiers grow without bound (one entry per deposit/withdrawal), so they
 // live in PERSISTENT storage — loaded on demand and not subject to the

@@ -6,6 +6,18 @@ import { useWallet } from "@/components/WalletProvider";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { getNotes, serializeNotes } from "@/lib/notes";
 import { getKyc } from "@/lib/kyc";
+
+function downloadAllNotes() {
+  const allNotes = getNotes();
+  if (allNotes.length === 0) return;
+  const blob = new Blob([serializeNotes(allNotes)], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `dshield-notes-${Date.now()}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 import { formatStroopsOrDash } from "@/lib/format";
 import {
   formatActivityCsv,
@@ -99,7 +111,9 @@ export default function HistoryPage() {
   // because the user hadn't scrolled would be worse than useless.
   function downloadActivity(kind: "csv" | "json") {
     const content =
-      kind === "csv" ? formatActivityCsv(filtered) : formatActivityJson(filtered);
+      kind === "csv"
+        ? formatActivityCsv(filtered)
+        : formatActivityJson(filtered);
     const mime = kind === "csv" ? "text/csv" : "application/json";
     const blob = new Blob([content], { type: mime });
     const url = URL.createObjectURL(blob);
@@ -249,7 +263,11 @@ export default function HistoryPage() {
             {activity.length === 0 && (
               <Link
                 href="/deposit"
-                className={buttonVariants({ variant: "outline", size: "sm", className: "mt-4" })}
+                className={buttonVariants({
+                  variant: "outline",
+                  size: "sm",
+                  className: "mt-4",
+                })}
               >
                 Make your first deposit
               </Link>
