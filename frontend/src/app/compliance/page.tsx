@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useReducer } from "react";
 import { zipSync, strToU8 } from "fflate";
-import { getNotes, saveNoteIfNew, type ShieldedNote } from "@/lib/notes";
+import { getNotes, saveNoteIfNew, serializeNotes, type ShieldedNote } from "@/lib/notes";
 import { friendlyError } from "@/lib/errors";
 import { syncSpentNotes } from "@/lib/sync";
 import {
@@ -46,6 +46,17 @@ export default function CompliancePage() {
   }, []);
 
   const allNotes = typeof window !== "undefined" ? getNotes() : [];
+
+  function downloadAllNotes() {
+    if (allNotes.length === 0) return;
+    const blob = new Blob([serializeNotes(allNotes)], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `dshield-notes-${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   function switchMode(m: Mode) {
     setMode(m);
@@ -180,18 +191,46 @@ export default function CompliancePage() {
       </div>
 
       <div className="mt-6 space-y-6">
-        {mode === "threshold" ? (
-          <ThresholdDisclosure notes={allNotes} />
-        ) : (
-          <>
-            {/* Note selection */}
-            {mode === "generate" && (
-              <Card>
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-medium text-zinc-400">
-                    Your Notes ({allNotes.length})
-                  </h3>
-                  {allNotes.length > 0 && (
+        {/* Note selection */}
+        {mode === "generate" && (
+          <Card>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-medium text-zinc-400">
+                Your Notes ({allNotes.length})
+              </h2>
+              <div className="flex items-center gap-3">
+                {allNotes.length > 0 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={downloadAllNotes}
+                      className="text-xs text-zinc-500 transition-colors hover:text-zinc-300"
+                    >
+                      Download all
+                    </button>
+                    <button
+                      disabled={isLoading}
+                      onClick={() =>
+                        selectedCommitments.size === allNotes.length
+                          ? setSelectedCommitments(new Set())
+                          : setSelectedCommitments(new Set(allNotes.map((n) => n.commitment)))
+                      }
+                      className="text-xs text-zinc-500 transition-colors hover:text-zinc-300 disabled:pointer-events-none"
+                    >
+                      {selectedCommitments.size === allNotes.length ? "Deselect all" : "Select all"}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {allNotes.length === 0 ? (
+              <p className="mt-3 text-sm text-zinc-500">No notes on this device yet. Make a deposit, or import a note below.</p>
+            ) : (
+              <div className="mt-3 space-y-2">
+                {allNotes.map((note) => {
+                  const selected = selectedCommitments.has(note.commitment);
+                  return (
                     <button
                       disabled={isLoading}
                       onClick={() =>
