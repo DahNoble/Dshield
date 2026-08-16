@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useWallet } from "@/components/WalletProvider";
 import {
   buildContractCall,
@@ -37,63 +37,6 @@ import {
 import { useToast } from "@/components/ui/Toast";
 import * as StellarSdk from "@stellar/stellar-sdk";
 
-/**
- * Deposit confirmation modal. Defined at module scope rather than inside
- * DepositPage so its component type is stable across renders — a component
- * created during render is remounted on every parent update.
- */
-function ConfirmDeposit({
-  tierLabel,
-  noteCount,
-  tierAmount,
-  estimatedFee,
-  isLoading,
-  onCancel,
-  onConfirm,
-}: {
-  tierLabel?: string;
-  noteCount: number;
-  tierAmount: number;
-  estimatedFee: string;
-  isLoading: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <Card className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50">
-      <div className="max-w-md w-full bg-zinc-900 p-6 rounded-xl border border-zinc-700 shadow-lg">
-        <h2 className="text-lg font-semibold mb-4 text-zinc-200">
-          Confirm Deposit
-        </h2>
-        <p className="text-sm text-zinc-400 mb-2">
-          Tier: <span className="font-medium text-zinc-200">{tierLabel}</span>
-        </p>
-        <p className="text-sm text-zinc-400 mb-2">
-          Total {TOKEN_SYMBOL}:{" "}
-          <span className="font-medium text-zinc-200">
-            {(noteCount * tierAmount) / 10 ** TOKEN_DECIMALS} {TOKEN_SYMBOL}
-            {noteCount > 1 && ` (${noteCount} notes)`}
-          </span>
-        </p>
-        <p className="text-sm text-zinc-400 mb-4">
-          Estimated fee:{" "}
-          <span className="font-medium text-zinc-200">
-            {formatStroops(Number(estimatedFee))} XLM
-          </span>
-        </p>
-        <div className="flex gap-4 justify-end">
-          <Button variant="outline" onClick={onCancel} disabled={isLoading}>
-            Cancel
-          </Button>
-          <Button onClick={onConfirm} disabled={isLoading}>
-            Confirm
-          </Button>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
 export default function DepositPage() {
   const { address, signTransaction } = useWallet();
   const { toast } = useToast();
@@ -107,18 +50,6 @@ export default function DepositPage() {
     const t = getPoolTiers();
     return t.length > 0 ? t[0] : null;
   });
-  // New UI state for confirmation step
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [estimatedFee, setEstimatedFee] = useState<string>("");
-  const [pendingTx, setPendingTx] = useState<StellarSdk.Transaction | null>(
-    null,
-  );
-  // Notes built during the deposit call, held until the user confirms and signs.
-  const pendingNotesRef = useRef<ShieldedNote[]>([]);
-  // Note count as of the moment the transaction was built. `totalNotes` is
-  // derived from `customAmount`, which handleDeposit clears before the user
-  // confirms, so the modal can't read it without showing the wrong total.
-  const [confirmNoteCount, setConfirmNoteCount] = useState(0);
 
   const noteCount = (() => {
     if (!customAmount || !selectedTier) return 1;
@@ -162,14 +93,7 @@ export default function DepositPage() {
       }
 
       // --- Prepare notes and commitments ---
-      // Generate every note's secrets and commitment up front. The leaf index
-      // each note will land on is read once from the chain (the next free slot)
-      // and assigned sequentially — exactly how the contract inserts them — so a
-      // single batched deposit yields the same indices as repeated deposits.
-      const nextIndexVal = await queryContract(
-        selectedTier.id,
-        "get_next_index",
-      );
+      const nextIndexVal = await queryContract(selectedTier.id, "get_next_index");
       const firstIndex = nextIndexVal
         ? Number(StellarSdk.scValToNative(nextIndexVal))
         : 0;
@@ -213,51 +137,28 @@ export default function DepositPage() {
               address,
             );
 
-      // Store fee and transaction for confirmation UI
-      setEstimatedFee(tx.fee.toString());
-      setPendingTx(tx);
-      // Keep pending notes for later processing after confirmation
-      pendingNotesRef.current = pending;
+      toast(
+        total > 1
+          ? `Shielding ${total} notes — please sign once in your wallet…`
+          : "Please sign the transaction in your wallet…",
+      );
+      const signedXdr = await signTransaction(tx.toXDR());
 
-      setConfirmNoteCount(total);
-      setShowConfirm(true);
-    } catch (err) {
-      console.error("Deposit error:", err);
-      toast(friendlyError(err), "error");
-    } finally {
-      setIsLoading(false);
-      setCustomAmount("");
-    }
-  }
-
-  /**
-   * Called after the user confirms the deposit. Signs the stored transaction,
-   * submits it, and performs the existing post‑sign logic.
-   */
-  async function signAndSubmit() {
-    if (!pendingTx || !address) return;
-    setIsLoading(true);
-    try {
-      const signedXdr = await signTransaction(pendingTx.toXDR());
       toast("Sending to the network…");
       await submitTransaction(signedXdr);
 
-      const pending: ShieldedNote[] = pendingNotesRef.current;
-      const created: ShieldedNote[] = [];
       for (const note of pending) {
-        saveNote(note);
-        created.push(note);
+        await saveNote(note);
         saveDeposit({
           commitment: note.commitment,
           leafIndex: note.leafIndex,
           timestamp: Date.now(),
-          poolId: selectedTier!.id,
+          poolId: selectedTier.id,
         });
+        setSessionNotes((prev) => [...prev, note]);
       }
-      setSessionNotes(created);
 
-      const total = pending.length;
-      const totalUsdc = (total * selectedTier!.amount) / 10 ** TOKEN_DECIMALS;
+      const totalUsdc = (total * selectedTier.amount) / 10 ** TOKEN_DECIMALS;
       toast(
         total > 1
           ? `${totalUsdc} ${TOKEN_SYMBOL} shielded across ${total} notes — save your notes below!`
@@ -269,9 +170,7 @@ export default function DepositPage() {
       toast(friendlyError(err), "error");
     } finally {
       setIsLoading(false);
-      setShowConfirm(false);
-      setPendingTx(null);
-      pendingNotesRef.current = [];
+      setCustomAmount("");
     }
   }
 
@@ -317,27 +216,18 @@ export default function DepositPage() {
         <div className="mb-6">
           <h3 className="text-sm font-medium text-zinc-400">How it works</h3>
           <ol className="mt-3 space-y-2 text-sm text-zinc-500">
-            <li>
-              1. Choose an amount — deposits use fixed sizes so they blend in
-              with everyone else&apos;s
-            </li>
-            <li>
-              2. Your {TOKEN_SYMBOL} moves into the shielded pool in one signed
-              transaction
-            </li>
-            <li>
-              3. You receive a private note, saved on this device — back it up
-              right away
-            </li>
+            <li>1. Choose an amount — deposits use fixed sizes so they blend in with everyone else&apos;s</li>
+            <li>2. Your {TOKEN_SYMBOL} moves into the shielded pool in one signed transaction</li>
+            <li>3. You receive a private note, saved on this device — back it up right away</li>
           </ol>
         </div>
 
         {tiers.length > 1 && (
           <div className="mb-4">
-            <legend className="mb-2 block text-xs text-zinc-500">
+            <label className="mb-2 block text-xs text-zinc-500">
               Select Denomination
-            </legend>
-            <fieldset className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            </label>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               {tiers.map((tier) => (
                 <SelectButton
                   key={tier.id}
@@ -345,12 +235,11 @@ export default function DepositPage() {
                   onClick={() => setSelectedTier(tier)}
                   disabled={isLoading}
                   className="text-center font-medium"
-                  aria-label={`${tier.label} denomination`}
                 >
                   {tier.label}
                 </SelectButton>
               ))}
-            </fieldset>
+            </div>
           </div>
         )}
 
@@ -426,11 +315,11 @@ export default function DepositPage() {
                 {sessionNotes.length > 1 ? "s" : ""}
               </p>
               <p className="mt-1 text-xs leading-relaxed text-yellow-200/70">
-                This note is the <span className="font-medium">only</span> way
-                to withdraw these funds. It&apos;s saved in this browser, but if
-                you clear site data or switch devices it&apos;s gone for good.
-                Copy it or download the backup and keep it somewhere safe and
-                private — anyone with the note can spend it.
+                This note is the <span className="font-medium">only</span> way to
+                withdraw these funds. It&apos;s saved in this browser, but if you
+                clear site data or switch devices it&apos;s gone for good. Copy it
+                or download the backup and keep it somewhere safe and private —
+                anyone with the note can spend it.
               </p>
             </div>
 
@@ -439,8 +328,7 @@ export default function DepositPage() {
               const shareLink = generateNoteLink(note);
               const shareOpen = shareOpenKey === note.commitment;
               const xText = encodeURIComponent(
-                "Claim your DShield payment — open this link to withdraw:\n" +
-                  shareLink,
+                "Claim your DShield payment — open this link to withdraw:\n" + shareLink,
               );
               const tgUrl =
                 "https://t.me/share/url?url=" +
@@ -466,9 +354,7 @@ export default function DepositPage() {
                         onClick={() => copyText(serialized, note.commitment)}
                         className="text-xs font-medium text-brand-400 hover:text-brand-300"
                       >
-                        {copiedKey === note.commitment
-                          ? "Copied!"
-                          : "Copy note"}
+                        {copiedKey === note.commitment ? "Copied!" : "Copy note"}
                       </button>
                       <button
                         type="button"
@@ -496,9 +382,9 @@ export default function DepositPage() {
                         Share to claim
                       </p>
                       <p className="mt-1 text-[11px] text-yellow-400/80">
-                        Warning: this link contains your private note. Anyone
-                        who opens it can withdraw the funds — share only with
-                        the intended recipient via a private channel.
+                        Warning: this link contains your private note. Anyone who
+                        opens it can withdraw the funds — share only with the
+                        intended recipient via a private channel.
                       </p>
                       <p className="mt-2 break-all font-mono text-[11px] text-zinc-500">
                         {shareLink}
@@ -575,24 +461,6 @@ export default function DepositPage() {
           </div>
         )}
       </Card>
-
-      {showConfirm && (
-        <ConfirmDeposit
-          tierLabel={selectedTier?.label}
-          noteCount={confirmNoteCount}
-          tierAmount={selectedTier?.amount ?? 0}
-          estimatedFee={estimatedFee}
-          isLoading={isLoading}
-          onCancel={() => {
-            // Discard the staged transaction and notes: nothing was signed or
-            // submitted, so these must not leak into a later confirmation.
-            setShowConfirm(false);
-            setPendingTx(null);
-            pendingNotesRef.current = [];
-          }}
-          onConfirm={signAndSubmit}
-        />
-      )}
     </PageShell>
   );
 }
