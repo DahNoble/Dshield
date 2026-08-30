@@ -235,3 +235,5 @@ describe("buildMerkleTree", () => {
     expect(proof.pathSiblings[0].toLowerCase()).toBe(c1.toLowerCase());
   });
 });
+
+

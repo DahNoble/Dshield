@@ -2023,6 +2023,8 @@ mod tests {
 
         let mut pi = [0u8; PUBLIC_INPUT_BYTES as usize];
         pi[..32].copy_from_slice(&root_after_first.to_array());
+        let asset_id = asset_id_from_address(&env, &token_addr).unwrap();
+        pi[160..192].copy_from_slice(&asset_id.to_array());
         let public_inputs = Bytes::from_slice(&env, &pi);
         let proof = Bytes::from_slice(&env, &[0u8; PROOF_BYTES]);
 
@@ -2045,6 +2047,8 @@ mod tests {
 
         let mut pi = [0u8; PUBLIC_INPUT_BYTES as usize];
         pi[..32].copy_from_slice(&current_root.to_array());
+        let asset_id = asset_id_from_address(&env, &token_addr).unwrap();
+        pi[160..192].copy_from_slice(&asset_id.to_array());
         let public_inputs = Bytes::from_slice(&env, &pi);
         let proof = Bytes::from_slice(&env, &[0u8; PROOF_BYTES]);
 
@@ -2097,7 +2101,10 @@ mod tests {
         client.deposit(&depositor, &token_addr, &c1, &NOTE_AMOUNT);
 
         let recipient = <Address as TestAddress>::generate(&env);
-        let public_inputs = Bytes::from_slice(&env, &[0u8; PUBLIC_INPUT_BYTES as usize]);
+        let asset_id = asset_id_from_address(&env, &token_addr).unwrap();
+        let mut pi = [0u8; PUBLIC_INPUT_BYTES as usize];
+        pi[160..192].copy_from_slice(&asset_id.to_array());
+        let public_inputs = Bytes::from_slice(&env, &pi);
         let bad_proof = Bytes::from_slice(&env, &[0u8; 100]);
 
         let result = client.try_withdraw(&recipient, &token_addr, &public_inputs, &bad_proof, &0i128, &0i128, &recipient);
@@ -2185,10 +2192,12 @@ mod tests {
         client.deposit(&depositor, &token_addr, &c1, &NOTE_AMOUNT);
 
         let recipient = <Address as TestAddress>::generate(&env);
+        let asset_id = asset_id_from_address(&env, &token_addr).unwrap();
         let mut pi = [0u8; PUBLIC_INPUT_BYTES as usize];
         pi[160..192]
             .copy_from_slice(&asset_id_from_address(&env, &token_addr).unwrap().to_array());
         pi[0] = 0xFF;
+        pi[160..192].copy_from_slice(&asset_id.to_array());
         let public_inputs = Bytes::from_slice(&env, &pi);
         let proof = Bytes::from_slice(&env, &[0u8; PROOF_BYTES]);
 
@@ -2208,7 +2217,10 @@ mod tests {
         client.deposit(&depositor, &token_addr, &c1, &NOTE_AMOUNT);
 
         let recipient = <Address as TestAddress>::generate(&env);
-        let public_inputs = Bytes::from_slice(&env, &[0u8; PUBLIC_INPUT_BYTES as usize]);
+        let asset_id = asset_id_from_address(&env, &token_addr).unwrap();
+        let mut pi = [0u8; PUBLIC_INPUT_BYTES as usize];
+        pi[160..192].copy_from_slice(&asset_id.to_array());
+        let public_inputs = Bytes::from_slice(&env, &pi);
         let empty_proof = Bytes::from_slice(&env, &[]);
 
         let result = client.try_withdraw(&recipient, &token_addr, &public_inputs, &empty_proof, &0i128, &0i128, &recipient);
@@ -2265,6 +2277,8 @@ mod tests {
         for b in pi[64..96].iter_mut() {
             *b = 0xAA;
         }
+        let asset_id = asset_id_from_address(&env, &token_addr).unwrap();
+        pi[160..192].copy_from_slice(&asset_id.to_array());
         let public_inputs = Bytes::from_slice(&env, &pi);
         let proof = Bytes::from_slice(&env, &[0u8; PROOF_BYTES]);
 
@@ -2316,6 +2330,8 @@ mod tests {
             .copy_from_slice(&asset_id_from_address(&env, &token_addr).unwrap().to_array());
         pi[..32].copy_from_slice(&root.to_array());
         pi[64..96].copy_from_slice(&hash_a.to_array());
+        let asset_id = asset_id_from_address(&env, &token_addr).unwrap();
+        pi[160..192].copy_from_slice(&asset_id.to_array());
         let public_inputs = Bytes::from_slice(&env, &pi);
         let proof = Bytes::from_slice(&env, &[0u8; PROOF_BYTES]);
 
@@ -2347,6 +2363,8 @@ mod tests {
         let mut pi = [0u8; PUBLIC_INPUT_BYTES as usize];
         pi[..32].copy_from_slice(&root.to_array());
         pi[64..96].copy_from_slice(&correct.to_array());
+        let asset_id = asset_id_from_address(&env, &token_addr).unwrap();
+        pi[160..192].copy_from_slice(&asset_id.to_array());
         let public_inputs = Bytes::from_slice(&env, &pi);
         let proof = Bytes::from_slice(&env, &[0u8; PROOF_BYTES]);
 
@@ -2376,6 +2394,8 @@ mod tests {
         pi[160..192]
             .copy_from_slice(&asset_id_from_address(&env, &token_addr).unwrap().to_array());
         pi[..32].copy_from_slice(&root.to_array());
+        let asset_id = asset_id_from_address(&env, &token_addr).unwrap();
+        pi[160..192].copy_from_slice(&asset_id.to_array());
         let public_inputs = Bytes::from_slice(&env, &pi);
         let proof = Bytes::from_slice(&env, &[0u8; PROOF_BYTES]);
 
@@ -2533,6 +2553,8 @@ mod tests {
             .copy_from_slice(&asset_id_from_address(&env, &token_addr).unwrap().to_array());
         pi[..32].copy_from_slice(&client.get_root().unwrap().to_array());
         pi[128..160].copy_from_slice(&existing.to_array());
+        let asset_id = asset_id_from_address(&env, &token_addr).unwrap();
+        pi[160..192].copy_from_slice(&asset_id.to_array());
         let public_inputs = Bytes::from_slice(&env, &pi);
         let proof = Bytes::from_slice(&env, &[0u8; PROOF_BYTES]);
 
@@ -2555,6 +2577,8 @@ mod tests {
         let mut pi = [0u8; PUBLIC_INPUT_BYTES as usize];
         pi[..32].copy_from_slice(&client.get_root().unwrap().to_array());
         pi[96] = 0x01; // withdraw_amount well above 2^64
+        let asset_id = asset_id_from_address(&env, &token_addr).unwrap();
+        pi[160..192].copy_from_slice(&asset_id.to_array());
         let public_inputs = Bytes::from_slice(&env, &pi);
         let proof = Bytes::from_slice(&env, &[0u8; PROOF_BYTES]);
 
@@ -2725,6 +2749,8 @@ mod tests {
         pi[..32].copy_from_slice(&root.to_array());
         pi[32..64].copy_from_slice(&nullifier.to_array());
         pi[64..96].copy_from_slice(&recipient_hash.to_array());
+        let asset_id = asset_id_from_address(&env, &token_addr).unwrap();
+        pi[160..192].copy_from_slice(&asset_id.to_array());
         let public_inputs = Bytes::from_slice(&env, &pi);
         let proof = Bytes::from_slice(&env, &[0u8; PROOF_BYTES]);
 
@@ -2947,7 +2973,10 @@ mod tests {
         client.pause();
 
         let recipient = <Address as TestAddress>::generate(&env);
-        let public_inputs = Bytes::from_slice(&env, &[0u8; PUBLIC_INPUT_BYTES as usize]);
+        let asset_id = asset_id_from_address(&env, &token_addr).unwrap();
+        let mut pi = [0u8; PUBLIC_INPUT_BYTES as usize];
+        pi[160..192].copy_from_slice(&asset_id.to_array());
+        let public_inputs = Bytes::from_slice(&env, &pi);
         let proof = Bytes::from_slice(&env, &[0u8; PROOF_BYTES]);
         let result = client.try_withdraw(&recipient, &token_addr, &public_inputs, &proof, &0i128, &0i128, &recipient);
         assert_eq!(result.err().unwrap().unwrap(), PoolError::Paused);
@@ -3102,6 +3131,8 @@ mod tests {
             .copy_from_slice(&asset_id_from_address(&env, &token_addr).unwrap().to_array());
         pi[..32].copy_from_slice(&root.to_array());
         pi[64..96].copy_from_slice(&correct.to_array());
+        let asset_id = asset_id_from_address(&env, &token_addr).unwrap();
+        pi[160..192].copy_from_slice(&asset_id.to_array());
         let public_inputs = Bytes::from_slice(&env, &pi);
         let proof = Bytes::from_slice(&env, &[0u8; PROOF_BYTES]);
 
@@ -3228,6 +3259,7 @@ mod tests {
         asset: &Address,
     ) -> Bytes {
         let recipient_hash = recipient_hash_from_address(env, recipient).unwrap();
+        let asset_id = asset_id_from_address(env, asset).unwrap();
         let mut pi = [0u8; PUBLIC_INPUT_BYTES as usize];
         pi[..32].copy_from_slice(&root.to_array());
         pi[64..96].copy_from_slice(&recipient_hash.to_array());
