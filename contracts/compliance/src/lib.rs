@@ -1171,7 +1171,7 @@ mod tests {
         arr[0] = 7;
         let commitment = BytesN::from_array(env, &arr);
         dshield_pool::PoolContractClient::new(env, &pool_id)
-            .deposit(&depositor, &commitment, &note_amount);
+            .deposit(&depositor, &token_id.address(), &commitment, &note_amount);
         (pool_id, note_amount)
     }
 
